@@ -14,7 +14,7 @@
 
 // From vm_param.h, define for iOS 8.0 or higher to build on device.
 #ifndef BYTE_SIZE
-    #define BYTE_SIZE 8 // byte size in bits
+#define BYTE_SIZE 8 // byte size in bits
 #endif
 
 #define MEGABYTE (1024 * 1024)
@@ -199,7 +199,7 @@ static NSHashTable *allAnimatedImagesWeak;
         _cachedFramesForIndexes = [[NSMutableDictionary alloc] init];
         _cachedFrameIndexes = [[NSMutableIndexSet alloc] init];
         _requestedFrameIndexes = [[NSMutableIndexSet alloc] init];
-
+        
         // Note: We could leverage `CGImageSourceCreateWithURL` too to add a second initializer `-initWithAnimatedGIFContentsOfURL:`.
         _imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)data,
                                                    (__bridge CFDictionaryRef)@{(NSString *)kCGImageSourceShouldCache: @NO});
@@ -209,10 +209,12 @@ static NSHashTable *allAnimatedImagesWeak;
             return nil;
         }
         
+        // Iterate through frame images
+        size_t imageCount = CGImageSourceGetCount(_imageSource);
         // Early return if not GIF!
         CFStringRef imageSourceContainerType = CGImageSourceGetType(_imageSource);
         BOOL isGIFData = UTTypeConformsTo(imageSourceContainerType, kUTTypeGIF);
-        if (!isGIFData) {
+        if (!isGIFData && imageCount <= 0) {
             FLLog(FLLogLevelError, @"Supplied data is of type %@ and doesn't seem to be GIF data %@", imageSourceContainerType, data);
             return nil;
         }
@@ -230,8 +232,6 @@ static NSHashTable *allAnimatedImagesWeak;
         NSDictionary *imageProperties = (__bridge_transfer NSDictionary *)CGImageSourceCopyProperties(_imageSource, NULL);
         _loopCount = [[[imageProperties objectForKey:(id)kCGImagePropertyGIFDictionary] objectForKey:(id)kCGImagePropertyGIFLoopCount] unsignedIntegerValue];
         
-        // Iterate through frame images
-        size_t imageCount = CGImageSourceGetCount(_imageSource);
         NSUInteger skippedFrameCount = 0;
         NSMutableDictionary *delayTimesForIndexesMutable = [NSMutableDictionary dictionaryWithCapacity:imageCount];
         for (size_t i = 0; i < imageCount; i++) {
@@ -514,12 +514,12 @@ static NSHashTable *allAnimatedImagesWeak;
 {
     // It's very important to use the cached `_imageSource` since the random access to a frame with `CGImageSourceCreateImageAtIndex` turns from an O(1) into an O(n) operation when re-initializing the image source every time.
     CGImageRef imageRef = CGImageSourceCreateImageAtIndex(_imageSource, index, NULL);
-
+    
     // Early return for nil
     if (!imageRef) {
         return nil;
     }
-
+    
     UIImage *image = [UIImage imageWithCGImage:imageRef];
     CFRelease(imageRef);
     
